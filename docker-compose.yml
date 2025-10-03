@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: training_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1324
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.py:/docker-entrypoint-initdb.d/init-db.py
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Наше приложение
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=training_db
+      - DB_USER=postgres
+      - DB_PASSWORD=1324
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    working_dir: /app
+    command: >
+      sh -c "python scripts/wait-for-postgres.sh &&
+             python app/load_csv.py /app/datasets/output.csv --as-training-data &&
+             tail -f /dev/null"
+
+  # Jupyter notebook для анализа (опционально)
+  jupyter:
+    build: .
+    ports:
+      - "8888:8888"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=training_db
+      - DB_USER=postgres
+      - DB_PASSWORD=1324
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    working_dir: /app
+    command: >
+      sh -c "python scripts/wait-for-postgres.sh &&
+             jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
