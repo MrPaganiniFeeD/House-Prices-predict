@@ -14,7 +14,6 @@ class DatabaseConfig:
         return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
 
-# Создаем глобальный конфиг
 db_config = DatabaseConfig()
 print(db_config)
 __all__ = ['db_config']

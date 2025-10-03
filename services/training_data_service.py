@@ -1,16 +1,16 @@
-import pandas as pd
 from typing import List, Dict, Any
 from sqlalchemy import text
 from services.csv_service import CSVService
 from model.training_data import TrainingData
-
+from model.training_data import TestData
 from database.connection import db_manager
 import numpy as np
 import json
-from model.training_data import TestData
+import pandas as pd
+
+
 
 def safe_json_serialize(obj):
-    """Безопасно сериализует объект в JSON"""
     if obj is None:
         return None
     elif isinstance(obj, (int, float)) and np.isnan(obj):
@@ -23,29 +23,24 @@ def safe_json_serialize(obj):
         return obj
 
 def load_test_data_from_csv(csv_path: str, feature_columns: list):
-    """Загружает тестовые данные из CSV в таблицу test_data"""
-    
-    # Читаем и очищаем данные
+
     data = pd.read_csv(csv_path)
     data_cleaned = data.replace({np.nan: None})
     data_cleaned = data_cleaned.replace({pd.NaT: None})
-    
+
     with db_manager.session_scope() as session:
         successful_records = 0
-        
+
         for index, row in data_cleaned.iterrows():
             try:
-                # Безопасно создаем словарь фичей
                 features = {}
                 for col in feature_columns:
                     raw_value = row[col]
                     safe_value = safe_json_serialize(raw_value)
                     features[col] = safe_value
                 
-                # Сохраняем оригинальный Id
                 original_id = safe_json_serialize(row['Id']) if 'Id' in row else None
                 
-                # Проверяем, что features можно сериализовать в JSON
                 try:
                     json.dumps(features)
                 except (TypeError, ValueError) as e:
@@ -59,15 +54,15 @@ def load_test_data_from_csv(csv_path: str, feature_columns: list):
                 session.add(test_record)
                 successful_records += 1
                 
-                # Прогресс для больших файлов
                 if (successful_records + 1) % 100 == 0:
                     print(f"Обработано {successful_records + 1} тестовых записей...")
                     
             except Exception as e:
                 print(f"Ошибка при обработке тестовой записи {index}: {e}")
                 continue
-        
+
         return successful_records
+
 
 class TrainingDataService:
     def __init__(self):
@@ -80,18 +75,8 @@ class TrainingDataService:
         target_column: str,
         description_column: str = None
     ) -> int:
-        """
-        Загружает CSV с данными для обучения в таблицу training_data
-
-        Args:
-            csv_path: путь к CSV файлу
-            feature_columns: список колонок с фичами
-            target_column: колонка с целевой переменной
-            description_column: опциональная колонка с описанием
-        """
 
         def process_chunk(chunk: pd.DataFrame) -> List[Dict[str, Any]]:
-            """Обрабатывает чанк данных для вставки в training_data"""
             records = []
 
             for _, row in chunk.iterrows():
@@ -113,11 +98,9 @@ class TrainingDataService:
 
         total_rows = 0
         print('db_manager', db_manager)
-        # Читаем CSV чанками
         for chunk in pd.read_csv(csv_path, chunksize=5000):
             records = process_chunk(chunk)
 
-            # Вставляем записи в БД
             with db_manager.session_scope() as session:
                 session.bulk_insert_mappings(TrainingData, records)
                 total_rows += len(records)
@@ -130,9 +113,7 @@ class TrainingDataService:
         table_name: str,
         dtype: Dict = None
     ) -> int:
-        """
-        Загружает CSV как есть в новую таблицу (для сырых данных)
-        """
+
         if dtype is None:
             dtype = {}
 

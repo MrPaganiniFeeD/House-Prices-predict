@@ -4,6 +4,7 @@ from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+
 class TrainingData(Base):
     __tablename__ = "training_data"
 
@@ -17,12 +18,13 @@ class TrainingData(Base):
     def __repr__(self):
         return f"<TrainingData(id={self.id}, target={self.target})>"
 
+
 class TestData(Base):
     __tablename__ = 'test_data'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    features = Column(JSON, nullable=False)  # Все фичи
-    original_id = Column(Integer, nullable=True)  # Сохраняем оригинальный Id из CSV
+    features = Column(JSON, nullable=False) 
+    original_id = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):

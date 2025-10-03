@@ -1,10 +1,11 @@
-import pandas as pd
-import logging
 from typing import Dict, List, Optional
 from sqlalchemy import Table, MetaData
 from database.connection import db_manager
+import pandas as pd
+import logging
 
 logger = logging.getLogger(__name__)
+
 
 class CSVService:
     def __init__(self):
@@ -18,19 +19,7 @@ class CSVService:
         dtype: Optional[Dict] = None,
         **read_csv_kwargs
     ) -> int:
-        """
-        Загружает CSV файл в указанную таблицу
 
-        Args:
-            csv_path: путь к CSV файлу
-            table_name: название таблицы в БД
-            chunk_size: размер чанка для пакетной вставки
-            dtype: типы данных для колонок
-            **read_csv_kwargs: дополнительные параметры для pd.read_csv
-
-        Returns:
-            количество загруженных строк
-        """
         total_rows = 0
 
         try:
@@ -51,7 +40,6 @@ class CSVService:
             raise
 
     def _insert_chunk(self, chunk: pd.DataFrame, table_name: str) -> int:
-        """Вставляет чанк данных в таблицу"""
         with self.db_manager.session_scope() as session:
             # Используем SQLAlchemy core для эффективной вставки
             chunk.to_sql(
@@ -70,22 +58,17 @@ class CSVService:
         sample_size: int = 1000,
         **read_csv_kwargs
     ) -> None:
-        """
-        Создает таблицу на основе структуры CSV файла
-        """
-        # Читаем sample для определения структуры
+
         sample_df = pd.read_csv(csv_path, nrows=sample_size, **read_csv_kwargs)
 
-        # Создаем таблицу
         with self.db_manager.engine.begin() as conn:
             sample_df.to_sql(
                 table_name,
                 conn,
-                if_exists='fail',  # Не перезаписывать существующую таблицу
+                if_exists='fail',
                 index=False
             )
 
         logger.info(f"Создана таблица {table_name} на основе CSV структуры")
 
-# Глобальный экземпляр сервиса
 csv_service = CSVService()

@@ -12,7 +12,7 @@ from services.csv_service import csv_service
 from services.training_data_service import training_data_service
 from services.training_data_service import load_test_data_from_csv
 from database.connection import db_manager
-from database.connection import Base  # Импортируем Base для создания таблиц
+from database.connection import Base 
 from model.training_data import TestData
 
 def create_tables():
@@ -31,18 +31,13 @@ def load_as_test_data(csv_path: str):
     """Загружает CSV в таблицу test_data"""
     print(f"Загрузка {csv_path} как test_data...")
     
-    # Читаем и очищаем данные
     data_test = pd.read_csv(csv_path)
     data_test = data_test.replace({np.nan: None})
     
-    # Создаем таблицы
     create_test_tables()
     
-    # Получаем feature_columns (все колонки кроме Id, если нужно)
     feature_columns = data_test.columns.tolist()
-    # ИЛИ если хотите исключить Id из features (т.к. он сохраняется отдельно):
-    # feature_columns = data_test.drop(columns=["Id"]).columns.tolist()
-    
+
     count = load_test_data_from_csv(
         csv_path=csv_path,
         feature_columns=feature_columns
@@ -67,12 +62,11 @@ def load_as_training_data(csv_path: str):
         data_train[col] = data_train[col].apply(lambda x: None if pd.isna(x) else x)
         
     create_tables()
-    # Укажите какие колонки являются фичами, а какая - целевой переменной
     count = training_data_service.load_training_data_from_csv(
         csv_path=csv_path,
-        feature_columns=data_train.drop(columns=["SalePrice"]).columns.tolist(),  # Ваши фичи
-        target_column='SalePrice',                           # Ваша целевая переменная
-        description_column='description'                 # Опционально
+        feature_columns=data_train.drop(columns=["SalePrice"]).columns.tolist(), 
+        target_column='SalePrice',                        
+        description_column='description'                 
     )
     
     print(f"Успешно загружено {count} записей для обучения")
@@ -85,7 +79,7 @@ def main():
     parser.add_argument('--table-name', help='Имя таблицы для сырой загрузки')
     parser.add_argument('--as-training-data', action='store_true', 
                        help='Загрузить как training_data')
-    parser.add_argument('--as-test-data', action='store_true',  # НОВЫЙ АРГУМЕНТ
+    parser.add_argument('--as-test-data', action='store_true',
                        help='Загрузить как test_data')
     args = parser.parse_args()
     
@@ -96,7 +90,7 @@ def main():
     try:
         if args.as_training_data:
             load_as_training_data(args.csv_path)
-        elif args.as_test_data:  # НОВАЯ ОПЦИЯ
+        elif args.as_test_data: 
             load_as_test_data(args.csv_path)
         else:
             print("Укажите --table-name или --as-training-data")
